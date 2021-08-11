@@ -9,4 +9,4 @@ edition = "2018"
 eframe = "0.13.1"
 eyre = "0.6.5"
 once_cell = "1.8.0"
-tradier = { path = "../tradier" }
+tradier = { git = "https://github.com/maccam912/tradier" }
