@@ -3,15 +3,27 @@ use std::{sync::Mutex, thread};
 use eframe::{egui, epi};
 use eyre::Result;
 use once_cell::sync::Lazy;
+use tradier::TradierConfig;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct State {
     balance: f64,
+    config: TradierConfig,
 }
 
 unsafe impl Send for State {}
 
-static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State { balance: 0.0 }));
+static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
+    Mutex::new(State {
+        balance: 0.0,
+        config: TradierConfig {
+            token: env!("TRADIER_TOKEN").into(),
+            endpoint: option_env!("TRADIER_ENDPOINT")
+                .unwrap_or("https://sandbox.tradier.com")
+                .into(),
+        },
+    })
+});
 
 struct TradierApp {
     state: &'static Mutex<State>,
@@ -58,8 +70,9 @@ impl epi::App for TradierApp {
 }
 
 fn update() -> Result<()> {
-    let acct = tradier::account::get_user_profile::get_user_profile().unwrap();
-    let balance = tradier::account::get_balances::get_balances(
+    let acct = tradier::account::get_user_profile(&STATE.lock().unwrap().config).unwrap();
+    let balance = tradier::account::get_balances(
+        &STATE.lock().unwrap().config,
         acct.profile.account[0].account_number.clone(),
     )
     .unwrap();
