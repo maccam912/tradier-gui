@@ -8,7 +8,9 @@ use eyre::Result;
 use once_cell::sync::Lazy;
 use tradier::TradierConfig;
 
-#[derive(Debug, Clone)]
+mod pages;
+
+#[derive(Debug, Clone, PartialEq)]
 enum Page {
     Balance,
     Portfolio,
@@ -97,6 +99,7 @@ impl epi::App for TradierApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            let state = &mut STATE.lock().unwrap();
             ui.vertical_centered(|ui| {
                 ui.horizontal(|ui| {
                     if ui.button("Update").clicked() {
@@ -106,23 +109,26 @@ impl epi::App for TradierApp {
                     }
 
                     if ui.button("Balance").clicked() {
-                        self.state.lock().unwrap().page = Page::Balance;
+                        state.page = Page::Balance;
                     }
                     if ui.button("Portfolio").clicked() {
-                        self.state.lock().unwrap().page = Page::Portfolio;
+                        state.page = Page::Portfolio;
                     }
                     if ui.button("Orders").clicked() {
-                        self.state.lock().unwrap().page = Page::Orders;
+                        state.page = Page::Orders;
                     }
                     if ui.button("Stocks").clicked() {
-                        self.state.lock().unwrap().page = Page::Stocks;
+                        state.page = Page::Stocks;
                     }
                     if ui.button("Options").clicked() {
-                        self.state.lock().unwrap().page = Page::Options;
+                        state.page = Page::Options;
                     }
                 });
+                if state.page == Page::Balance {
+                    let _ = pages::ui_balance_page(ui, frame, &mut state.config);
+                }
 
-                ui.label(format!("{:?}", self.state.lock().unwrap().page));
+                ui.label(format!("{:?}", state.page));
             })
         });
 
