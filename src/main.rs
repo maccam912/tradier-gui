@@ -1,14 +1,27 @@
 use std::{sync::Mutex, thread};
 
-use eframe::{egui, epi};
+use eframe::{
+    egui::{self, ComboBox},
+    epi,
+};
 use eyre::Result;
 use once_cell::sync::Lazy;
 use tradier::TradierConfig;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
+enum Page {
+    Balance,
+    Portfolio,
+    Orders,
+    Stocks,
+    Options,
+}
+
+#[derive(Debug, Clone)]
 struct State {
     balance: f64,
     config: TradierConfig,
+    page: Page,
 }
 
 unsafe impl Send for State {}
@@ -22,6 +35,7 @@ static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
                 .unwrap_or("https://sandbox.tradier.com")
                 .into(),
         },
+        page: Page::Balance,
     })
 });
 
@@ -35,6 +49,34 @@ impl Default for TradierApp {
     }
 }
 
+fn ui_login(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, config: &mut TradierConfig) {
+    egui::Grid::new("broker_login").show(ui, |ui| {
+        ui.heading("Tradier Login");
+        ui.end_row();
+
+        ui.label("Environment:");
+        ComboBox::from_id_source("endpoint")
+            .selected_text(config.endpoint.clone())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut config.endpoint,
+                    "https://sandbox.tradier.com".into(),
+                    "https://sandbox.tradier.com",
+                );
+                ui.selectable_value(
+                    &mut config.endpoint,
+                    "https://www.tradier.com".into(),
+                    "https://www.tradier.com",
+                );
+            });
+        ui.end_row();
+
+        ui.label("API Token: ");
+        ui.text_edit_singleline(&mut config.token);
+        ui.end_row();
+    });
+}
+
 impl epi::App for TradierApp {
     fn name(&self) -> &str {
         "Tradier Platform"
@@ -44,9 +86,8 @@ impl epi::App for TradierApp {
         let Self { state } = self;
 
         egui::TopBottomPanel::top("header_panel").show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading("Tradier Application");
-            });
+            let config = &mut STATE.lock().unwrap().config;
+            ui_login(ui, frame, config);
         });
 
         egui::TopBottomPanel::bottom("footer_panel").show(ctx, |ui| {
@@ -57,11 +98,31 @@ impl epi::App for TradierApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical_centered(|ui| {
-                if ui.button("Update").clicked() {
-                    thread::spawn(|| {
-                        let _ = update();
-                    });
-                }
+                ui.horizontal(|ui| {
+                    if ui.button("Update").clicked() {
+                        thread::spawn(|| {
+                            let _ = update();
+                        });
+                    }
+
+                    if ui.button("Balance").clicked() {
+                        self.state.lock().unwrap().page = Page::Balance;
+                    }
+                    if ui.button("Portfolio").clicked() {
+                        self.state.lock().unwrap().page = Page::Portfolio;
+                    }
+                    if ui.button("Orders").clicked() {
+                        self.state.lock().unwrap().page = Page::Orders;
+                    }
+                    if ui.button("Stocks").clicked() {
+                        self.state.lock().unwrap().page = Page::Stocks;
+                    }
+                    if ui.button("Options").clicked() {
+                        self.state.lock().unwrap().page = Page::Options;
+                    }
+                });
+
+                ui.label(format!("{:?}", self.state.lock().unwrap().page));
             })
         });
 
