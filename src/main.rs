@@ -92,22 +92,10 @@ impl epi::App for TradierApp {
             ui_login(ui, frame, config);
         });
 
-        egui::TopBottomPanel::bottom("footer_panel").show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading(format!("Balance: {}", state.lock().unwrap().balance));
-            });
-        });
-
         egui::CentralPanel::default().show(ctx, |ui| {
             let state = &mut STATE.lock().unwrap();
             ui.vertical_centered(|ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Update").clicked() {
-                        thread::spawn(|| {
-                            let _ = update();
-                        });
-                    }
-
                     if ui.button("Balance").clicked() {
                         state.page = Page::Balance;
                     }
@@ -127,25 +115,11 @@ impl epi::App for TradierApp {
                 if state.page == Page::Balance {
                     let _ = pages::ui_balance_page(ui, frame, &mut state.config);
                 }
-
-                ui.label(format!("{:?}", state.page));
             })
         });
 
         frame.set_window_size(ctx.used_size());
     }
-}
-
-fn update() -> Result<()> {
-    let acct = tradier::account::get_user_profile(&STATE.lock().unwrap().config).unwrap();
-    let balance = tradier::account::get_balances(
-        &STATE.lock().unwrap().config,
-        acct.profile.account[0].account_number.clone(),
-    )
-    .unwrap();
-    let bal = balance.balances.total_equity;
-    STATE.lock().unwrap().balance = bal;
-    Ok(())
 }
 
 fn main() {
