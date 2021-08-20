@@ -2093,7 +2093,7 @@ dependencies = [
 [[package]]
 name = "tradier"
 version = "0.1.0"
-source = "git+https://github.com/maccam912/tradier#9e8f7663f9d538741613909aed7db3a4a8a0c6ae"
+source = "git+https://github.com/maccam912/tradier#69e58dc9ee60123af0ee5f70c29829bafc217353"
 dependencies = [
  "chrono",
  "chrono-tz",

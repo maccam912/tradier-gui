@@ -48,7 +48,7 @@ static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
         },
         page: Page::Balance,
         order_symbol: "".into(),
-        debug_text: "Debug Text".into(),
+        debug_text: "".into(),
     })
 });
 

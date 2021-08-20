@@ -1,7 +1,7 @@
 use eframe::{egui, epi};
 use eyre::{ContextCompat, Result};
 
-use crate::State;
+use crate::{Page, State};
 
 pub fn ui_balance_page(
     ui: &mut egui::Ui,
@@ -47,7 +47,7 @@ pub fn ui_balance_page(
 }
 
 pub fn ui_portfolio(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &State) -> Result<()> {
-    egui::Grid::new("place_order_page").show(ui, |ui| {
+    egui::Grid::new("portfolio_page").show(ui, |ui| {
         ui.heading("Symbol");
         ui.heading("Quantity");
         ui.heading("Basis");
@@ -56,23 +56,47 @@ pub fn ui_portfolio(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &Stat
         ui.heading("Date Acquired");
         ui.end_row();
 
-        let orders_list = state.positions.as_ref().unwrap().positions.position.clone();
-        for order in orders_list {
-            ui.label(order.symbol);
-            ui.label(format!("{:?}", order.quantity));
-            ui.label(format!("{:?}", order.cost_basis));
+        let positions_list = state.positions.as_ref().unwrap().positions.position.clone();
+        for position in positions_list {
+            ui.label(position.symbol);
+            ui.label(format!("{:?}", position.quantity));
+            ui.label(format!("{:?}", position.cost_basis));
             ui.label("not implemented");
             ui.label("not implemented");
-            ui.label(format!("{:?}", order.date_acquired));
+            ui.label(format!("{:?}", position.date_acquired));
             ui.end_row();
         }
     });
-    ui.label(format!("{:?}", state.positions));
     Ok(())
 }
 
 pub fn ui_orders(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &State) -> Result<()> {
-    ui.label(format!("{:?}", state.orders));
+    egui::Grid::new("orders_page").show(ui, |ui| {
+        ui.heading("Symbol");
+        ui.heading("Side");
+        ui.heading("Quantity");
+        ui.heading("Type");
+        ui.heading("Duration");
+        ui.heading("Filled");
+        ui.heading("Status");
+        ui.end_row();
+
+        let orders_list = state.orders.as_ref().unwrap().orders.order.clone();
+        for order in orders_list {
+            ui.label(order.symbol);
+            ui.label(format!("{:?}", order.side));
+            ui.label(format!("{:?}", order.quantity));
+            ui.label(format!("{:?}", order.order_type));
+            ui.label(format!("{:?}", order.duration));
+            ui.label(format!(
+                "{:?}/{:?}",
+                order.quantity - order.remaining_quantity,
+                order.quantity
+            ));
+            ui.label(format!("{:?}", order.status));
+            ui.end_row();
+        }
+    });
     Ok(())
 }
 
@@ -105,7 +129,7 @@ pub fn ui_place_order(
                 None,
                 None,
             );
-            state.debug_text = format!("{:?}", resp);
+            state.page = Page::Orders;
         }
     });
 
