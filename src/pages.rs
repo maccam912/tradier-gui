@@ -47,6 +47,26 @@ pub fn ui_balance_page(
 }
 
 pub fn ui_portfolio(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &State) -> Result<()> {
+    egui::Grid::new("place_order_page").show(ui, |ui| {
+        ui.heading("Symbol");
+        ui.heading("Quantity");
+        ui.heading("Basis");
+        ui.heading("Current Price");
+        ui.heading("P/L");
+        ui.heading("Date Acquired");
+        ui.end_row();
+
+        let orders_list = state.positions.as_ref().unwrap().positions.position.clone();
+        for order in orders_list {
+            ui.label(order.symbol);
+            ui.label(format!("{:?}", order.quantity));
+            ui.label(format!("{:?}", order.cost_basis));
+            ui.label("not implemented");
+            ui.label("not implemented");
+            ui.label(format!("{:?}", order.date_acquired));
+            ui.end_row();
+        }
+    });
     ui.label(format!("{:?}", state.positions));
     Ok(())
 }
