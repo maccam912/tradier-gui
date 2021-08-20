@@ -6,7 +6,11 @@ use eframe::{
 };
 
 use once_cell::sync::Lazy;
-use tradier::{account::BalancesRoot, TradierConfig};
+use pages::{ui_orders, ui_place_order, ui_portfolio};
+use tradier::{
+    account::{get_balances::BalancesRoot, get_orders::OrdersRoot, get_positions::PositionsRoot},
+    TradierConfig,
+};
 
 mod pages;
 
@@ -15,15 +19,18 @@ enum Page {
     Balance,
     Portfolio,
     Orders,
-    Stocks,
-    Options,
+    PlaceOrder,
 }
 
 #[derive(Debug, Clone)]
 pub struct State {
     balance: Option<BalancesRoot>,
+    positions: Option<PositionsRoot>,
+    orders: Option<OrdersRoot>,
     config: TradierConfig,
     page: Page,
+    order_symbol: String,
+    debug_text: String,
 }
 
 unsafe impl Send for State {}
@@ -31,6 +38,8 @@ unsafe impl Send for State {}
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
     Mutex::new(State {
         balance: None,
+        positions: None,
+        orders: None,
         config: TradierConfig {
             token: env!("TRADIER_TOKEN").into(),
             endpoint: option_env!("TRADIER_ENDPOINT")
@@ -38,11 +47,13 @@ static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
                 .into(),
         },
         page: Page::Balance,
+        order_symbol: "".into(),
+        debug_text: "Debug Text".into(),
     })
 });
 
 struct TradierApp {
-    state: &'static Mutex<State>,
+    pub state: &'static Mutex<State>,
 }
 
 impl Default for TradierApp {
@@ -79,6 +90,22 @@ fn ui_login(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, config: &mut Tradier
     });
 }
 
+fn update_balance(state: &mut State) {
+    let profile = tradier::account::get_user_profile::get_user_profile(&state.config).unwrap();
+    let balance = tradier::account::get_balances::get_balances(
+        &state.config,
+        profile
+            .profile
+            .account
+            .get(0)
+            .unwrap()
+            .account_number
+            .clone(),
+    )
+    .unwrap();
+    state.balance = Some(balance);
+}
+
 impl epi::App for TradierApp {
     fn name(&self) -> &str {
         "Tradier Platform"
@@ -86,7 +113,7 @@ impl epi::App for TradierApp {
 
     fn update(&mut self, ctx: &eframe::egui::CtxRef, frame: &mut epi::Frame<'_>) {
         // let Self { state } = self;
-        let state = &mut STATE.lock().unwrap();
+        let mut state = &mut STATE.lock().unwrap();
 
         egui::TopBottomPanel::top("header_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -98,38 +125,60 @@ impl epi::App for TradierApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Balance").clicked() {
+                    if ui.button("Update").clicked() {
                         state.page = Page::Balance;
-                        let profile = tradier::account::get_user_profile(&state.config).unwrap();
-                        let balance = tradier::account::get_balances(
-                            &state.config,
-                            profile
-                                .profile
-                                .account
-                                .get(0)
-                                .unwrap()
-                                .account_number
-                                .clone(),
-                        )
-                        .unwrap();
-                        state.balance = Some(balance);
+                        update_balance(state);
                     }
                     if ui.button("Portfolio").clicked() {
                         state.page = Page::Portfolio;
+                        let profile =
+                            tradier::account::get_user_profile::get_user_profile(&state.config)
+                                .unwrap();
+                        let positions = tradier::account::get_positions::get_positions(
+                            &state.config,
+                            profile.profile.account[0].account_number.clone(),
+                        )
+                        .unwrap();
+                        state.positions = Some(positions);
                     }
                     if ui.button("Orders").clicked() {
                         state.page = Page::Orders;
+                        let profile =
+                            tradier::account::get_user_profile::get_user_profile(&state.config)
+                                .unwrap();
+
+                        let orders = tradier::account::get_orders::get_orders(
+                            &state.config,
+                            profile.profile.account[0].account_number.clone(),
+                            false,
+                        )
+                        .unwrap();
+                        state.orders = Some(orders);
                     }
-                    if ui.button("Stocks").clicked() {
-                        state.page = Page::Stocks;
-                    }
-                    if ui.button("Options").clicked() {
-                        state.page = Page::Options;
+                    if ui.button("Place Order").clicked() {
+                        state.page = Page::PlaceOrder;
                     }
                 });
-            })
+
+                match state.page {
+                    Page::Portfolio => {
+                        let _ = ui_portfolio(ui, frame, &state);
+                    }
+                    Page::Orders => {
+                        let _ = ui_orders(ui, frame, &state);
+                    }
+                    Page::PlaceOrder => {
+                        let _ = ui_place_order(ui, frame, &mut state);
+                    }
+                    _ => {}
+                };
+            });
+            ui.label(&state.debug_text);
         });
 
+        if state.balance.is_none() {
+            update_balance(state);
+        }
         frame.set_window_size(ctx.used_size());
     }
 }

@@ -1,5 +1,5 @@
 use eframe::{egui, epi};
-use eyre::{eyre, ContextCompat, Result};
+use eyre::{ContextCompat, Result};
 
 use crate::State;
 
@@ -42,6 +42,52 @@ pub fn ui_balance_page(
             ui.end_row();
         });
     }
+
+    Ok(())
+}
+
+pub fn ui_portfolio(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &State) -> Result<()> {
+    ui.label(format!("{:?}", state.positions));
+    Ok(())
+}
+
+pub fn ui_orders(ui: &mut egui::Ui, _frame: &mut epi::Frame<'_>, state: &State) -> Result<()> {
+    ui.label(format!("{:?}", state.orders));
+    Ok(())
+}
+
+pub fn ui_place_order(
+    ui: &mut egui::Ui,
+    _frame: &mut epi::Frame<'_>,
+    state: &mut State,
+) -> Result<()> {
+    egui::Grid::new("place_order_page").show(ui, |ui| {
+        ui.label("Symbol");
+        ui.text_edit_singleline(&mut state.order_symbol);
+        ui.end_row();
+        if ui.button("Submit").clicked() {
+            let account_id: &str =
+                &tradier::account::get_user_profile::get_user_profile(&state.config)
+                    .unwrap()
+                    .profile
+                    .account[0]
+                    .account_number;
+            let resp = tradier::trading::orders::post_order(
+                &state.config,
+                account_id.into(),
+                tradier::Class::equity,
+                state.order_symbol.clone(),
+                tradier::Side::buy,
+                1,
+                tradier::OrderType::market,
+                tradier::Duration::gtc,
+                None,
+                None,
+                None,
+            );
+            state.debug_text = format!("{:?}", resp);
+        }
+    });
 
     Ok(())
 }
