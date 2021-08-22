@@ -23,6 +23,54 @@ enum Page {
 }
 
 #[derive(Debug, Clone)]
+pub struct OrderFilters {
+    pending: bool,
+    canceled: bool,
+    filled: bool,
+    open: bool,
+    partially_filled: bool,
+    expired: bool,
+    rejected: bool,
+    calculated: bool,
+    accepted_for_bidding: bool,
+    error: bool,
+    held: bool,
+}
+
+impl Default for OrderFilters {
+    fn default() -> Self {
+        Self {
+            pending: true,
+            canceled: false,
+            filled: false,
+            open: true,
+            partially_filled: true,
+            expired: false,
+            rejected: false,
+            calculated: false,
+            accepted_for_bidding: false,
+            error: false,
+            held: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaceOrderState {
+    security_type: tradier::Class,
+    order_type: tradier::OrderType,
+}
+
+impl Default for PlaceOrderState {
+    fn default() -> Self {
+        Self {
+            security_type: tradier::Class::equity,
+            order_type: tradier::OrderType::market,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct State {
     balance: Option<BalancesRoot>,
     positions: Option<PositionsRoot>,
@@ -31,6 +79,8 @@ pub struct State {
     page: Page,
     order_symbol: String,
     debug_text: String,
+    order_filters: OrderFilters,
+    place_order_state: PlaceOrderState,
 }
 
 unsafe impl Send for State {}
@@ -49,6 +99,8 @@ static STATE: Lazy<Mutex<State>> = Lazy::new(|| {
         page: Page::Balance,
         order_symbol: "".into(),
         debug_text: "".into(),
+        order_filters: OrderFilters::default(),
+        place_order_state: PlaceOrderState::default(),
     })
 });
 
@@ -106,6 +158,18 @@ fn update_balance(state: &mut State) {
     state.balance = Some(balance);
 }
 
+fn update_orders(state: &mut State) {
+    let profile = tradier::account::get_user_profile::get_user_profile(&state.config).unwrap();
+
+    let orders = tradier::account::get_orders::get_orders(
+        &state.config,
+        profile.profile.account[0].account_number.clone(),
+        false,
+    )
+    .unwrap();
+    state.orders = Some(orders);
+}
+
 impl epi::App for TradierApp {
     fn name(&self) -> &str {
         "Tradier Platform"
@@ -143,17 +207,7 @@ impl epi::App for TradierApp {
                     }
                     if ui.button("Orders").clicked() {
                         state.page = Page::Orders;
-                        let profile =
-                            tradier::account::get_user_profile::get_user_profile(&state.config)
-                                .unwrap();
-
-                        let orders = tradier::account::get_orders::get_orders(
-                            &state.config,
-                            profile.profile.account[0].account_number.clone(),
-                            false,
-                        )
-                        .unwrap();
-                        state.orders = Some(orders);
+                        update_orders(&mut state);
                     }
                     if ui.button("Place Order").clicked() {
                         state.page = Page::PlaceOrder;
@@ -165,7 +219,7 @@ impl epi::App for TradierApp {
                         let _ = ui_portfolio(ui, frame, &state);
                     }
                     Page::Orders => {
-                        let _ = ui_orders(ui, frame, &state);
+                        let _ = ui_orders(ui, frame, &mut state);
                     }
                     Page::PlaceOrder => {
                         let _ = ui_place_order(ui, frame, &mut state);
