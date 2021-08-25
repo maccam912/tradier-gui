@@ -156,7 +156,6 @@ pub fn ui_place_order(
     state: &mut State,
 ) -> Result<()> {
     egui::Grid::new("place_order_page").show(ui, |ui| {
-
         ui.label("Security Type");
         ComboBox::from_id_source("security_type")
             .selected_text(state.place_order_state.security_type.clone())
@@ -188,6 +187,16 @@ pub fn ui_place_order(
                     tradier::OrderType::limit,
                     "limit",
                 );
+                ui.selectable_value(
+                    &mut state.place_order_state.order_type,
+                    tradier::OrderType::stop,
+                    "stop",
+                );
+                ui.selectable_value(
+                    &mut state.place_order_state.order_type,
+                    tradier::OrderType::stop_limit,
+                    "stop limit",
+                );
             });
         ui.end_row();
 
@@ -205,11 +214,11 @@ pub fn ui_place_order(
             let _resp = tradier::trading::orders::post_order(
                 &state.config,
                 account_id.into(),
-                tradier::Class::equity,
+                state.place_order_state.security_type,
                 state.order_symbol.clone(),
                 tradier::Side::buy,
                 1,
-                tradier::OrderType::market,
+                state.place_order_state.order_type,
                 tradier::Duration::gtc,
                 None,
                 None,
